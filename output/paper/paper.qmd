@@ -1,0 +1,150 @@
+---
+title: "An Analysis of School Distribution and Public Education Dominance in Toronto"
+author:
+  - Bingxu Li
+thanks: "A GitHub Repository containing all data, R code, and other files used in this investigation is located here: <https://github.com/BingxuLi/An-Analysis-of-School-Distribution-and-Public-Education-Dominance-in-Toronto.git>"
+date: 09-25-2024
+date-format: long
+abstract: "This report analyzes the distribution of schools in Toronto, focusing on school types, board representation, and geographic placement to inform policy and resource allocation for equitable access to education. Data from Toronto Open Data shows that English Public (EP) schools, managed by the Toronto District School Board, are the most common. Schools are concentrated mainly in central and eastern areas, ensuring broad access. A limitation is the potential underrepresentation of private schools. The findings highlight the importance of public education and suggest further investigation into specialized and alternative schooling options."
+format: pdf
+number-sections: true
+# The toc parameter used to create a table of contents was obtained from
+# Quarto documentation:
+# https://quarto.org/docs/reference/formats/pdf.html
+toc: true
+bibliography: references.bib
+---
+```{r}
+#| echo: false
+#| warning: false
+#### Preamble ####
+
+# Purpose: 
+# Author: Bingxu Li
+# Date: September 26, 2024
+# Contact: bingxu.li@mail.utoronto.ca
+# Pre-requisites: None
+```
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(opendatatoronto)
+```
+
+# Introduction {#sec-introduction}
+
+The distribution of academic opportunities within large, diverse public education systems remains a critical issue, particularly in urban centers like Toronto. As Canada's largest school district, the Toronto District School Board (TDSB) serves a demographically varied population, making it a key focal point for examining how academic stratification plays out in public education[@parekh2016toronto]. We are supposed to focus on how historical, organizational, and policy factors within the TDSB influence academic outcomes, questioning whether recent equity-focused initiatives and centralized public investment have effectively addressed long-standing disparities, especially for racialized and marginalized communities[@parekh2016toronto].
+
+The theory of effectively maintained inequality suggests that advantaged groups tend to dominate enrollment at top-tier institutions, and this study tests that hypothesis using data from Toronto District School Board students[@davies2014effectively]. Different economic levels may affect the types of schools, and different types of schools may create unequal levels of education. The same types of schools tend to appear near the same geographical location. For instance, secondary school students in the Toronto District School Board from low-income families, with parents lacking university education, or in special education programs have reduced access to valued educational opportunities, with work-oriented programs concentrated in lower-income neighborhoods[@parekh2011toronto].
+
+To investigate this question, the data on school locations is used[@Torontoschools]. This paper will analyze the location distribution of Toronto schools from three aspects: school types, the number of schools with different boards and the geographical location of schools.
+
+# Data {#sec-data}
+
+## Overview {#sec-data-overview}
+
+The data used is from Toronto Open Data which includes all known school locations, including private schools in Toronto[@Torontoschools]. The dataset comprises 1,194 records and 25 columns, offering comprehensive details about schools in the City of Toronto[@Torontoschools]. Key information includes school names, types (such as public and private), addresses, postal codes, and geographic coordinates[@Torontoschools]. Additional fields cover board names, municipality information, and unique identifiers like OBJECTID, GEO_ID, and ADDRESS_POINT_ID[@Torontoschools].
+
+Using the R programming language [@citeR], the `janitor` [@citejanitor] and `tidyverse` [@citetidyverse] packages were used to simulate the dataset. The `opendatatoronto` [@citeopendatatoronto] and `tidyverse` [@citetidyverse] packages were then applied to download the School Locations - All Types dataset. Then, the `tidyverse` package [@citetidyverse] was used to clean and test the dataset.
+
+## Results {#sec-data-results}
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+# Search for a specific package on OpenDataToronto by keyword ("School Locations - All Types")
+marriage_licence_packages <- search_packages("School Locations - All Types")
+
+# Retrieve a list of all resources (datasets) available within the found package
+marriage_licence_resources <- marriage_licence_packages %>%
+  list_package_resources()
+# Display the list of resources available in the "School Locations - All Types" package
+marriage_licence_statistics <- marriage_licence_resources[1,] %>%
+  get_resource()
+
+data = marriage_licence_statistics
+```
+
+After loading the dataset, using the R [@citeR], the `tidyverse` [@citetidyverse] was used to draw graphs. The R code used was adapted from @tellingstorieswithdata.
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-schooltypes
+#| fig-cap: "Distribution of Schools by Type"
+
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+data$geometry_cleaned <- gsub("c\\(|\\)", "", data$geometry)
+coords <- strsplit(data$geometry_cleaned, ", ")
+data$longitude <- as.numeric(sapply(coords, function(x) x[1]))
+data$latitude <- as.numeric(sapply(coords, function(x) x[2]))
+
+# Plot 1: Distribution of Schools by Type
+ggplot(data %>% filter(!is.na(SCHOOL_TYPE)), aes(x = SCHOOL_TYPE)) +
+  geom_bar(fill = "skyblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Schools by Type", x = "School Type", y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+@fig-schooltypes shows the distribution of schools by type, using a bar plot format. The x-axis represents different school types with C,EP, ES, FP, FS, PR, U. The y-axis shows the count of schools, representing how many schools belong to each type. The EP (English Public) school type has the highest count, with over 600 schools. However, FS, and U have very low counts, with less than 50 schools each.
+
+\newpage
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-schoolsboard
+#| fig-cap: "Number of Schools by Board"
+# Plot 2: Number of Schools by Board
+ggplot(data %>% filter(!is.na(BOARD_NAME)), aes(x = BOARD_NAME)) +
+  geom_bar(fill = "purple") +
+  theme_minimal() +
+  labs(title = "Number of Schools by Board", x = "School Board", y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+@fig-schoolsboard shows that the Toronto District School Board accounts for the majority of schools in the dataset, with over 600 schools (approximately 55%). This is followed by schools with no board affiliation (None), which make up around 35%, and the Toronto Catholic District School Board with about 10%. Schools under the Conseil scolaire de district catholique Centre-Sud and Conseil scolaire Viamonde are minimal, representing less than 1% each.
+
+\newpage
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: fig-geographicalschools
+#| fig-cap: "Geographical Distribution of Schools"
+# Plot 3: Geographical Distribution of Schools
+ggplot(data, aes(x = longitude, y = latitude)) +
+  geom_point(alpha = 0.5, color = "green") +
+  theme_minimal() +
+  labs(title = "Geographical Distribution of Schools", x = "Longitude", y = "Latitude") +
+  theme(panel.grid.major = element_line(color = "grey80"))
+```
+@fig-geographicalschools shows that the majority of schools are located within the central and eastern parts of Toronto, concentrated between longitudes of -79.6 and -79.3 (approximately 65%). This is followed by a smaller concentration of schools in the western part of the region (approximately 25%). The northernmost and southernmost parts of the city account for approximately 7% and 3% of the total schools, respectively. The spread is relatively even, with no significant gaps or extreme clusters, indicating that schools are well-distributed across the urban and suburban areas.
+
+\newpage
+
+# Discussion {#sec-discussion}
+
+@sec-data-results highlights the dominance of public education, with English Public (EP) schools comprising the majority, while private and religious schools serve smaller populations. The Toronto District School Board (TDSB) oversees the largest number of schools, followed by a significant number of unaffiliated (private) schools, and the Toronto Catholic District School Board (TCDSB) serving fewer institutions. Geographically, schools are evenly distributed across the city, particularly in central and eastern areas, ensuring broad access to education.
+
+The paragraphs highlight the dominance of public education and the equitable distribution of schools across Toronto, with private and religious schools serving smaller populations. @fig-schooltypes shows that English Public (EP) schools dominate the educational landscape, accounting for more than 50% of the total schools in the region, which means that the public school types seems to serve the majority of students. In addition, @fig-schoolsboard illustrates that Toronto District School Board accounts for the majority of schools, indicating a strong emphasis on the language of English public education in Toronto. Moreover, @fig-geographicalschools shows that the schools in Toronto are well-distributed, particularly in the central and eastern parts, ensuring balanced access to education across urban and suburban areas. 
+
+While the data analyzed the distribution of more than 1,000 schools in Toronto, it faces several limitations. For instance, private and independent schools without board affiliation might be underrepresented, which could result in an underestimation of their total number. Furthermore, the analysis focuses on each school's primary type for clarity, potentially overlooking specialty programs or alternative education options within the public system, leading to a less complete understanding of the city's overall educational framework.
+
+Future studies should explore the distribution of specialty programs and alternative schooling options within both public and private schools in Toronto to achieve a more complete understanding of the city's education system.
+
+\newpage
+
+
+# References
+
+
+
